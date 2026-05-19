@@ -119,24 +119,37 @@ def read_dbf_records(dbf_path: Path) -> list[dict[str, str]]:
     return records
 
 
-def timezone_color(record: dict[str, str], zone_bounds: tuple[float, float] | None = None) -> tuple[int, int, int, int]:
-    """Map a timezone's UTC offset to a rainbow hue. Returns RGBA tuple."""
+def timezone_color(record: dict[str, str], zone_index_map: dict[str, int] | None = None, total_zones: int = 40) -> tuple[int, int, int, int]:
+    """Map a timezone's UTC offset to a distinct spectrum color.
+
+    Each unique zone value gets its own hue from the 240° blue→red arc.
+    Adjacent zones alternate saturation (vivid / washed) so neighbors
+    are clearly distinguishable even when hues are close.
+    Always uses full brightness — no dark colors to blend into ocean.
+    """
     zone_value = record.get("zone") or record.get("name") or "0"
-    try:
-        zone = float(zone_value)
-    except ValueError:
-        zone = 0
-    if zone_bounds:
-        lo, hi = zone_bounds
+    if zone_index_map and zone_value in zone_index_map:
+        idx = zone_index_map[zone_value]
+        n = total_zones - 1
     else:
-        lo, hi = 5.0, 11.0
-    if hi == lo:
-        frac = 0.5
-    else:
+        try:
+            zone = float(zone_value)
+        except ValueError:
+            zone = 0
+        lo, hi = -12.0, 14.0
         frac = (zone - lo) / (hi - lo)
-    frac = max(0.0, min(1.0, frac))
-    hue_deg = 240.0 - frac * 240.0
-    r, g, b = colorsys.hsv_to_rgb(hue_deg / 360.0, 0.95, 1.0)
+        idx = round(frac * (total_zones - 1))
+        n = total_zones - 1
+
+    # Hue: 210° (sky blue) → 0° (red), indexed by position among all zones.
+    # Starting at 210 instead of 240 avoids dark blue that blends into ocean.
+    hue_deg = 210.0 - (idx / n) * 210.0 if n > 0 else 105.0
+
+    # Alternate saturation: even = vivid, odd = washed — keeeps neighbors distinct
+    sat = 0.95 if idx % 2 == 0 else 0.55
+
+    # Always full brightness — no dark blues on ocean
+    r, g, b = colorsys.hsv_to_rgb(hue_deg / 360.0, sat, 1.0)
     return (int(r * 255), int(g * 255), int(b * 255), 245)
 
 
@@ -146,7 +159,8 @@ def render_overlay(
     height: int,
     output_png: Path,
     shape_records: list[dict[str, str]] | None = None,
-    zone_bounds: tuple[float, float] | None = None,
+    zone_index_map: dict[str, int] | None = None,
+    total_zones: int = 40,
 ) -> None:
     output_png.parent.mkdir(parents=True, exist_ok=True)
     image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
@@ -159,7 +173,7 @@ def render_overlay(
 
     for shape_index, rings in enumerate(rings_by_shape):
         record = shape_records[shape_index] if shape_records and shape_index < len(shape_records) else {}
-        color = timezone_color(record, zone_bounds) if record else (255, 230, 40, 245)
+        color = timezone_color(record, zone_index_map, total_zones) if record else (255, 230, 40, 245)
         for ring in rings:
             points = [project(point, width, height) for point in ring]
             if len(points) >= 2:
@@ -167,7 +181,7 @@ def render_overlay(
 
     for shape_index, rings in enumerate(rings_by_shape):
         record = shape_records[shape_index] if shape_records and shape_index < len(shape_records) else {}
-        color = timezone_color(record, zone_bounds) if record else (255, 230, 40, 245)
+        color = timezone_color(record, zone_index_map, total_zones) if record else (255, 230, 40, 245)
         for ring in rings:
             points = [project(point, width, height) for point in ring]
             if len(points) >= 2:
@@ -228,22 +242,25 @@ def main() -> None:
     rings_by_shape = read_polygon_rings(shp_path)
     shape_records = read_dbf_records(shp_path.with_suffix(".dbf"))
 
-    # Compute zone bounds for spectrum color coding
-    zones_found = []
-    for rec in shape_records:
-        zv = rec.get("zone") or rec.get("name") or ""
-        try:
-            zones_found.append(float(zv))
-        except ValueError:
-            pass
-    zone_bounds = (min(zones_found), max(zones_found)) if zones_found else None
+    # Build zone index map: each unique zone value gets an index in sorted order
+    unique_zones = sorted(
+        {rec.get("zone") or rec.get("name") or "" for rec in shape_records if rec.get("zone") or rec.get("name")},
+        key=float,
+    )
+    zone_index_map = {z: i for i, z in enumerate(unique_zones)} if unique_zones else None
+    total_zones = len(unique_zones) if unique_zones else 40
 
     built_kmz: list[Path] = []
     for spec in resolutions:
         width, height, label = parse_resolution(spec)
         png_path = args.outdir / f"timezone_borders_raster_{label}.png"
         kmz_path = args.outdir / f"earth_timezones_raster_{label}.kmz"
-        render_overlay(rings_by_shape, width, height, png_path, shape_records=shape_records, zone_bounds=zone_bounds)
+        render_overlay(
+            rings_by_shape, width, height, png_path,
+            shape_records=shape_records,
+            zone_index_map=zone_index_map,
+            total_zones=total_zones,
+        )
         write_kmz(kmz_path, png_path)
         built_kmz.append(kmz_path)
         print(f"wrote {kmz_path} ({kmz_path.stat().st_size} bytes)")
