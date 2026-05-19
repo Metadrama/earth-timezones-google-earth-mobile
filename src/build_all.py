@@ -107,7 +107,7 @@ def build_all(
     canvas.save(composite_path, optimize=True, quality=P["quality"])
     print(f"  Composite: {composite_path} ({composite_path.stat().st_size} bytes)")
 
-    print("\n✅ All done. Files:")
+    print("\n[OK] All done. Files:")
     print(f"   {kmz_path}")
     print(f"   {png_path}")
     print(f"   {legend_path}")

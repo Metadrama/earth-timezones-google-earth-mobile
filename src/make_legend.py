@@ -59,9 +59,11 @@ def make_legend(
     inner_w = total * block_w + (total - 1) * sep_w
     margin = (width - inner_w) // 2
 
-    font = ImageFont.truetype(resolve_font(1), round(L["label_font_size_base"] * max(1, scale)))
-    footer_font = ImageFont.truetype(resolve_font(1, style="regular"),
-                                      round(L["footer_font_size_base"] * max(1, scale)))
+    font_path = resolve_font(1)
+    font = ImageFont.truetype(font_path, round(L["label_font_size_base"] * max(1, scale))) if font_path else ImageFont.load_default()
+    footer_path = resolve_font(1, style="regular")
+    footer_font = ImageFont.truetype(footer_path,
+                                      round(L["footer_font_size_base"] * max(1, scale))) if footer_path else ImageFont.load_default()
 
     img = Image.new("RGB", (width, height), bg_color)
     draw = ImageDraw.Draw(img)

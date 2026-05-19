@@ -4,9 +4,15 @@ A lightweight Google Earth Mobile overlay for visualizing timezone borders witho
 
 **The approach:** render timezone boundaries into a transparent PNG and load it as a KML `GroundOverlay`. One image, one KML entry. No panels, no tiles, no SuperOverlay.
 
-Proven at 4096×2048 on a Snapdragon 888 / Android 13 device.
+Rendered at 4096×2048 — the resolution that renders fully on mobile.
 
 ![Timezone borders overlay with color legend](docs/preview-with-legend.png)
+
+*Timezone borders over a dark background. Colors follow a blue→red spectrum corresponding to UTC offset.*
+
+The overlay loaded in Google Earth Mobile:
+
+![Timezone borders in Google Earth Mobile](docs/preview-in-ge.jpg)
 
 Each unique UTC offset gets **its own distinct color** — 40 offsets, 40 colors, arranged as a continuous spectrum from sky blue (UTC−12) to red (UTC+14). Adjacent offsets alternate between vivid and washed saturation so neighboring timezones are distinguishable at a glance.
 
@@ -14,7 +20,7 @@ Each unique UTC offset gets **its own distinct color** — 40 offsets, 40 colors
 
 ### Problem
 
-Google Earth Mobile (Samsung Z Flip 3) has multiple hard limits:
+Google Earth Mobile has multiple hard limits for custom overlay layers:
 
 1. **SuperOverlay** (tiles + `NetworkLink`/`Region`/`Lod`) → rejected with "Unsupported element"
 2. **Flat tile packs** (~951 PNGs) → "max external image limit reached" at ~22 references
@@ -22,13 +28,11 @@ Google Earth Mobile (Samsung Z Flip 3) has multiple hard limits:
 
 ### Solution
 
-One `GroundOverlay`, one PNG, sized to the proven limit:
+One `GroundOverlay`, one PNG, sized to the limit:
 
-- **4096 × 2048** — the exact dimension confirmed to render fully
+- **4096 × 2048** — the dimension confirmed to render fully on mobile GPUs
 - **2-pass stroke**: black shadow (`width=2`, `alpha=190`) + colored core (`width=1`, `alpha=245`) with `joint="curve"`
 - **Thin lines**: halo_width = `max(2, width//2048)`, line_width = `max(1, width//4096)`
-
-This matches the first working prototype (the global yellow overlay) exactly, with coloring as the only change.
 
 ### Color assignment
 
@@ -47,7 +51,7 @@ No gradient, no interpolation. Each offset gets one fixed color.
 
 | File | Size | Coverage | Resolution |
 |------|------|----------|------------|
-| `earth_timezones_raster_4k_spectrum.kmz` | ~169 KB | Global | 4096 × 2048 |
+| `earth_timezones_raster_4k.kmz` | ~169 KB | Global | 4096 × 2048 |
 
 ## Usage
 
@@ -98,8 +102,9 @@ python3 src/make_preview.py --overlay dist/timezone_borders_raster_custom.png
 | `src/make_legend.py` | Generator: zone DBF → discrete-block color legend |
 | `src/make_preview.py` | Compositor: overlay + legend → README preview |
 | `src/build_all.py` | Entry point: runs the full pipeline |
-| `dist/earth_timezones_raster_4k_spectrum.kmz` | Global spectrum overlay (proven working) |
+| `dist/earth_timezones_raster_4k.kmz` | Global spectrum overlay |
 | `docs/preview-with-legend.png` | README preview — overlay + legend composite |
+| `docs/preview-in-ge.jpg` | Overlay rendered on-device |
 | `docs/preview-spectrum.png` | Standalone full-globe preview |
 | `docs/legend-staggered.png` | Standalone color legend |
 
@@ -111,7 +116,6 @@ python3 src/make_preview.py --overlay dist/timezone_borders_raster_custom.png
 
 - Cartography by [Natural Earth](https://www.naturalearthdata.com/), data donated by [International Mapping Associates, Inc.](http://internationalmapping.com/)
 - Rendered with [Pillow](https://python-pillow.org/)
-- Tested on Snapdragon 888 / Android 13
 
 ## License
 

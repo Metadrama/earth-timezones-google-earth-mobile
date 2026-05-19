@@ -15,7 +15,7 @@ from pathlib import Path
 # ── load config ──────────────────────────────────────────────────────────
 
 _config_path = Path(__file__).parent / "config.json"
-with open(_config_path) as _f:
+with open(_config_path, encoding="utf-8") as _f:
     _C = json.load(_f)
 
 # Flatten common references
@@ -113,14 +113,14 @@ def format_offset(val: str) -> str:
     return f"UTC{sign}{whole}"
 
 
-def resolve_font(size: int, style: str = "bold") -> str:
-    """Find the first available font file. Returns path string."""
+def resolve_font(size: int, style: str = "bold") -> str | None:
+    """Find the first available font file. Returns path or None if none found."""
     fallbacks = _FONTS["bold_fallbacks"] if style == "bold" else _FONTS["regular_fallbacks"]
     for path in fallbacks:
         p = Path(path)
         if p.exists():
             return str(p)
-    return fallbacks[0]  # last resort — will fail at runtime if missing
+    return None  # no font found; caller should use load_default()
 
 
 # ── KML template ─────────────────────────────────────────────────────────
