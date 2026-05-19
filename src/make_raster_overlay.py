@@ -13,6 +13,7 @@ interactive vector features.
 from __future__ import annotations
 
 import argparse
+import colorsys
 import struct
 import urllib.request
 import zipfile
@@ -87,31 +88,90 @@ def project(lon_lat: tuple[float, float], width: int, height: int) -> tuple[int,
     return int(round(x)), int(round(y))
 
 
+def read_dbf_records(dbf_path: Path) -> list[dict[str, str]]:
+    """Read dBase records for the Natural Earth timezone shapefile."""
+    data = dbf_path.read_bytes()
+    _version, _year, _month, _day, record_count, header_len, record_len = struct.unpack("<BBBBIHH20x", data[:32])
+    fields: list[tuple[str, str, int]] = []
+    offset = 32
+    while offset < header_len and data[offset] != 0x0D:
+        descriptor = data[offset : offset + 32]
+        name = descriptor[:11].split(b"\0", 1)[0].decode("ascii")
+        field_type = chr(descriptor[11])
+        length = descriptor[16]
+        fields.append((name, field_type, length))
+        offset += 32
+    records: list[dict[str, str]] = []
+    pos = header_len
+    for _ in range(record_count):
+        record = data[pos : pos + record_len]
+        pos += record_len
+        if not record or record[:1] == b"*":
+            records.append({})
+            continue
+        cursor = 1
+        values: dict[str, str] = {}
+        for name, _field_type, length in fields:
+            raw = record[cursor : cursor + length]
+            cursor += length
+            values[name] = raw.decode("latin1", errors="replace").strip()
+        records.append(values)
+    return records
+
+
+def timezone_color(record: dict[str, str], zone_bounds: tuple[float, float] | None = None) -> tuple[int, int, int, int]:
+    """Map a timezone's UTC offset to a rainbow hue. Returns RGBA tuple."""
+    zone_value = record.get("zone") or record.get("name") or "0"
+    try:
+        zone = float(zone_value)
+    except ValueError:
+        zone = 0
+    if zone_bounds:
+        lo, hi = zone_bounds
+    else:
+        lo, hi = 5.0, 11.0
+    if hi == lo:
+        frac = 0.5
+    else:
+        frac = (zone - lo) / (hi - lo)
+    frac = max(0.0, min(1.0, frac))
+    hue_deg = 240.0 - frac * 240.0
+    r, g, b = colorsys.hsv_to_rgb(hue_deg / 360.0, 0.95, 1.0)
+    return (int(r * 255), int(g * 255), int(b * 255), 245)
+
+
 def render_overlay(
     rings_by_shape: list[list[list[tuple[float, float]]]],
     width: int,
     height: int,
     output_png: Path,
+    shape_records: list[dict[str, str]] | None = None,
+    zone_bounds: tuple[float, float] | None = None,
 ) -> None:
     output_png.parent.mkdir(parents=True, exist_ok=True)
     image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
     # Contrast halo: makes borders readable on mixed satellite/terrain imagery.
+    # These exact widths match the proven working yellow overlay.
     halo_width = max(2, width // 2048)
     line_width = max(1, width // 4096)
 
-    for rings in rings_by_shape:
+    for shape_index, rings in enumerate(rings_by_shape):
+        record = shape_records[shape_index] if shape_records and shape_index < len(shape_records) else {}
+        color = timezone_color(record, zone_bounds) if record else (255, 230, 40, 245)
         for ring in rings:
             points = [project(point, width, height) for point in ring]
             if len(points) >= 2:
                 draw.line(points, fill=(0, 0, 0, 190), width=halo_width, joint="curve")
 
-    for rings in rings_by_shape:
+    for shape_index, rings in enumerate(rings_by_shape):
+        record = shape_records[shape_index] if shape_records and shape_index < len(shape_records) else {}
+        color = timezone_color(record, zone_bounds) if record else (255, 230, 40, 245)
         for ring in rings:
             points = [project(point, width, height) for point in ring]
             if len(points) >= 2:
-                draw.line(points, fill=(255, 230, 40, 245), width=line_width, joint="curve")
+                draw.line(points, fill=color, width=line_width, joint="curve")
 
     image.save(output_png, optimize=True)
 
@@ -166,13 +226,24 @@ def main() -> None:
     download(args.source_url, zip_path)
     shp_path = extract(zip_path, extract_dir)
     rings_by_shape = read_polygon_rings(shp_path)
+    shape_records = read_dbf_records(shp_path.with_suffix(".dbf"))
+
+    # Compute zone bounds for spectrum color coding
+    zones_found = []
+    for rec in shape_records:
+        zv = rec.get("zone") or rec.get("name") or ""
+        try:
+            zones_found.append(float(zv))
+        except ValueError:
+            pass
+    zone_bounds = (min(zones_found), max(zones_found)) if zones_found else None
 
     built_kmz: list[Path] = []
     for spec in resolutions:
         width, height, label = parse_resolution(spec)
         png_path = args.outdir / f"timezone_borders_raster_{label}.png"
         kmz_path = args.outdir / f"earth_timezones_raster_{label}.kmz"
-        render_overlay(rings_by_shape, width, height, png_path)
+        render_overlay(rings_by_shape, width, height, png_path, shape_records=shape_records, zone_bounds=zone_bounds)
         write_kmz(kmz_path, png_path)
         built_kmz.append(kmz_path)
         print(f"wrote {kmz_path} ({kmz_path.stat().st_size} bytes)")
