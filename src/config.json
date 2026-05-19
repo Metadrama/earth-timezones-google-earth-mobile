@@ -1,0 +1,72 @@
+{
+  "colors": {
+    "hue_start": 210,
+    "hue_end": 0,
+    "hue_fallback": 105,
+    "saturation_vivid": 0.95,
+    "saturation_washed": 0.55,
+    "value": 1.0,
+    "alpha": 245
+  },
+  "strokes": {
+    "halo_color_rgba": [0, 0, 0, 190],
+    "halo_factor": 2048,
+    "line_factor": 4096,
+    "fallback_color_rgba": [255, 230, 40, 245],
+    "joint": "curve"
+  },
+  "kml": {
+    "document_name": "Earth timezone borders raster overlay",
+    "overlay_name": "Timezone borders",
+    "description": "Rasterized Natural Earth timezone borders. Accurate visual overlay, no vector features, designed to avoid Google Earth Mobile vector lag."
+  },
+  "legend": {
+    "width": 2240,
+    "height": 140,
+    "background_rgb": [18, 22, 31],
+    "block_width_base": 54,
+    "separator_width": 1,
+    "separator_rgb": [35, 39, 48],
+    "bar_top_base": 31,
+    "bar_height_base": 32,
+    "label_font_size_base": 12,
+    "footer_font_size_base": 10,
+    "even_label_y_base": 8,
+    "odd_label_row1_y_base": 66,
+    "odd_label_row2_y_base": 78,
+    "even_label_rgb": [200, 204, 213],
+    "odd_label_rgb": [130, 134, 143],
+    "footer_rgb": [90, 94, 103],
+    "footer_text": "Color legend — 40 timezone offsets (UTC−12 to UTC+14) · blue → red spectrum",
+    "footer_y_base": 16
+  },
+  "preview": {
+    "overlay_background_rgb": [12, 15, 24],
+    "legend_background_rgb": [18, 22, 31],
+    "gap": 30,
+    "quality": 90
+  },
+  "fonts": {
+    "bold_fallbacks": [
+      "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+      "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+      "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+    ],
+    "regular_fallbacks": [
+      "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "/usr/share/fonts/TTF/DejaVuSans.ttf",
+      "/usr/share/fonts/truetype/liberation/LiberationSans.ttf"
+    ]
+  },
+  "paths": {
+    "natural_earth_url": "https://naciscdn.org/naturalearth/10m/cultural/ne_10m_time_zones.zip",
+    "workdir": "build/natural-earth",
+    "overlay_outdir": "dist",
+    "legend_output": "docs/legend-staggered.png",
+    "preview_output": "docs/preview-with-legend.png",
+    "default_overlay_png": "dist/timezone_borders_raster_4k.png",
+    "default_dbf": "build/natural-earth/ne_10m_time_zones/ne_10m_time_zones.dbf",
+    "default_resolution": "4k:4096x2048"
+  }
+}

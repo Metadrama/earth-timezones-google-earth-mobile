@@ -7,3 +7,8 @@ venv/
 build/
 dist/tiled-superoverlay/
 dist/test_*.kmz
+dist/timezone_borders_raster_*.png
+dist/earth_timezones_raster_*.kmz
+dist/earth_timezones_raster_overlays.zip
+docs/color-legend-wide.png
+docs/color-legend.png

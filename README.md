@@ -62,30 +62,42 @@ If it does not appear, open Google Earth → Projects → Import KML/KMZ file.
 
 ```bash
 pip install Pillow
+python3 src/build_all.py
+```
+
+This single command runs the full pipeline:
+
+| Step | Script | What it produces |
+|------|--------|-----------------|
+| 1 | `core.py` | Shared config: color scheme, zone reader, KML template |
+| 2 | `make_raster_overlay.py` | Transparent border PNG + KMZ archive |
+| 3 | `make_legend.py` | Discrete-block color legend PNG |
+| 4 | `make_preview.py` | README header composite (overlay + legend) |
+
+Each step can also be run individually:
+
+```bash
 python3 src/make_raster_overlay.py --resolution "4k:4096x2048"
 python3 src/make_legend.py
 python3 src/make_preview.py
 ```
 
-The overlay script downloads Natural Earth's `ne_10m_time_zones.zip`, reads the shapefile rings and DBF zone metadata, renders spectrum-colored borders onto a transparent PNG, and packages as a KMZ.
-
-The legend script reads the same DBF zone data and generates the discrete-block color legend used in the README preview.
-
-The preview script composites the overlay and legend into a single image for the README header.
-
 Custom resolution:
 
 ```bash
 python3 src/make_raster_overlay.py --resolution "custom:2048x1024"
+python3 src/make_preview.py --overlay dist/timezone_borders_raster_custom.png
 ```
 
 ## Files
 
 | Path | Purpose |
 |------|---------|
+| `src/core.py` | Shared config: color scheme, zone reader, KML template |
 | `src/make_raster_overlay.py` | Generator: shapefile → spectrum border PNG → KMZ |
 | `src/make_legend.py` | Generator: zone DBF → discrete-block color legend |
 | `src/make_preview.py` | Compositor: overlay + legend → README preview |
+| `src/build_all.py` | Entry point: runs the full pipeline |
 | `dist/earth_timezones_raster_4k_spectrum.kmz` | Global spectrum overlay (proven working) |
 | `docs/preview-with-legend.png` | README preview — overlay + legend composite |
 | `docs/preview-spectrum.png` | Standalone full-globe preview |
